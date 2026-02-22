@@ -1,5 +1,8 @@
-# GAP
-backend/uploads/*
+# Spec-kit
+.claude
+.specify
+nul
+tmpclaude-*-cwd
 
 # frontend
 **/node_modules/*
