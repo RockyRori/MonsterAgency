@@ -1,0 +1,360 @@
+:root {
+  color-scheme: light;
+  font-family: "Aptos", "Segoe UI Variable Text", "Trebuchet MS", sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+  color: #f6f0e5;
+  background:
+    radial-gradient(circle at top left, rgba(252, 207, 118, 0.24), transparent 32%),
+    radial-gradient(circle at top right, rgba(69, 142, 157, 0.24), transparent 30%),
+    linear-gradient(160deg, #152028 0%, #22363c 48%, #3d2f24 100%);
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+}
+
+button {
+  border: none;
+  border-radius: 999px;
+  font: inherit;
+  cursor: pointer;
+  transition:
+    transform 160ms ease,
+    opacity 160ms ease,
+    background-color 160ms ease;
+}
+
+button:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+.app-shell {
+  width: min(1440px, calc(100vw - 32px));
+  margin: 0 auto;
+  padding: 32px 0 48px;
+}
+
+.hero,
+.panel,
+.notice,
+.stat-card,
+.map-card,
+.monster-card,
+.recipe-card,
+.inventory-row,
+.quest-card {
+  backdrop-filter: blur(16px);
+  background: rgba(14, 18, 22, 0.56);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.18);
+}
+
+.hero {
+  display: flex;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 28px;
+  border-radius: 28px;
+  margin-bottom: 20px;
+}
+
+.hero h1,
+.panel h2,
+.map-card h3,
+.monster-card h3,
+.recipe-card h3,
+.inventory-row h3,
+.quest-card h3 {
+  font-family: "Rockwell", "Georgia", serif;
+  margin: 0;
+}
+
+.hero h1 {
+  font-size: clamp(2.1rem, 4vw, 3.6rem);
+}
+
+.hero-copy {
+  max-width: 640px;
+  margin: 10px 0 0;
+  color: rgba(246, 240, 229, 0.86);
+}
+
+.hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.primary-button,
+.secondary-button,
+.ghost-button,
+.assignment-buttons button {
+  padding: 10px 16px;
+}
+
+.primary-button {
+  background: linear-gradient(135deg, #eb9f41, #d45c3f);
+  color: #1d1107;
+  font-weight: 700;
+}
+
+.secondary-button {
+  background: rgba(235, 159, 65, 0.16);
+  color: #f5d5aa;
+  border: 1px solid rgba(235, 159, 65, 0.28);
+}
+
+.ghost-button {
+  background: transparent;
+  color: rgba(246, 240, 229, 0.88);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+}
+
+.eyebrow {
+  margin: 0 0 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  font-size: 0.75rem;
+  color: rgba(245, 213, 170, 0.72);
+}
+
+.stats-grid,
+.map-grid,
+.monster-grid,
+.recipe-grid,
+.quest-list {
+  display: grid;
+  gap: 16px;
+}
+
+.stats-grid {
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  margin-bottom: 20px;
+}
+
+.stat-card {
+  border-radius: 22px;
+  padding: 18px;
+}
+
+.stat-card span {
+  display: block;
+  color: rgba(246, 240, 229, 0.72);
+}
+
+.stat-card strong {
+  display: block;
+  margin-top: 8px;
+  font-size: 1.8rem;
+}
+
+.notice {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 20px 24px;
+  border-radius: 24px;
+  margin-bottom: 20px;
+}
+
+.notice-success {
+  border-color: rgba(112, 190, 132, 0.35);
+}
+
+.main-grid {
+  display: grid;
+  gap: 20px;
+}
+
+.panel {
+  border-radius: 28px;
+  padding: 24px;
+}
+
+.panel-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: flex-start;
+  margin-bottom: 18px;
+}
+
+.panel-header p {
+  margin: 6px 0 0;
+  color: rgba(246, 240, 229, 0.74);
+}
+
+.battle-log,
+.activity-feed,
+.warning-list {
+  display: grid;
+  gap: 10px;
+}
+
+.battle-log p,
+.activity-feed p,
+.warning-list p {
+  margin: 0;
+  padding: 12px 14px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.map-grid {
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+}
+
+.map-card {
+  padding: 18px;
+  border-radius: 22px;
+}
+
+.map-card-top,
+.monster-card-top,
+.quest-top {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.map-card-active {
+  border-color: rgba(235, 159, 65, 0.5);
+}
+
+.map-card-locked {
+  opacity: 0.6;
+}
+
+.monster-grid {
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+}
+
+.monster-card {
+  border-left: 4px solid transparent;
+  border-radius: 22px;
+  padding: 18px;
+}
+
+.monster-copy {
+  margin: 12px 0;
+  color: rgba(246, 240, 229, 0.76);
+}
+
+.monster-stats,
+.labor-stats,
+.assignment-buttons,
+.inventory-row-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.monster-stats,
+.labor-stats {
+  margin-bottom: 12px;
+}
+
+.monster-stats span,
+.labor-stats span {
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06);
+  font-size: 0.92rem;
+}
+
+.assignment-buttons {
+  margin-bottom: 12px;
+}
+
+.assignment-buttons button {
+  background: rgba(255, 255, 255, 0.08);
+  color: inherit;
+}
+
+.assignment-buttons .active-tag {
+  background: rgba(235, 159, 65, 0.2);
+  color: #ffd9a4;
+}
+
+.recipe-grid {
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+}
+
+.recipe-card,
+.quest-card {
+  border-radius: 22px;
+  padding: 18px;
+}
+
+.inventory-list {
+  display: grid;
+  gap: 12px;
+}
+
+.inventory-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 18px;
+  border-radius: 20px;
+}
+
+.inventory-row h3,
+.inventory-row p,
+.quest-card p,
+.recipe-card p,
+.map-card p {
+  margin: 0 0 8px;
+}
+
+.rarity-pill {
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: rgba(84, 140, 132, 0.28);
+  color: #ccece7;
+  text-transform: capitalize;
+  font-size: 0.85rem;
+}
+
+@media (max-width: 900px) {
+  .app-shell {
+    width: min(100vw - 24px, 1440px);
+    padding-top: 20px;
+  }
+
+  .hero,
+  .panel,
+  .notice,
+  .inventory-row {
+    padding: 18px;
+  }
+
+  .hero,
+  .panel-header,
+  .notice,
+  .inventory-row {
+    flex-direction: column;
+  }
+}

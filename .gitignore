@@ -2,6 +2,8 @@
 
 # frontend
 **/node_modules/*
+**/dist/*
+**/coverage/*
 
 # Mac builtin
 .DS_Store
