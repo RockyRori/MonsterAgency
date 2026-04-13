@@ -1,22 +1,19 @@
 import { describe, expect, it } from "vitest";
-import { recipeDefinitions } from "../content/items";
+import { gameContent } from "../content";
 import { createInitialGameState } from "./create-game-state";
-import { craftRecipe } from "./crafting";
+import { canCraftRecipe, craftRecipe } from "./crafting";
 
 describe("craftRecipe", () => {
-  it("adds deterministic bonus output when crafting power passes the threshold", () => {
+  it("requires unlocked recipe, materials, and smithing power", () => {
     const state = createInitialGameState();
-    const recipe = recipeDefinitions.find((entry) => entry.id === "agency-crate");
+    const recipe = gameContent.recipeDefinitionsById["bronze-sword"];
 
-    if (!recipe) {
-      throw new Error("Recipe not found");
-    }
+    expect(canCraftRecipe(state, recipe)).toBe(true);
 
-    const result = craftRecipe(state, recipe, 12);
+    const result = craftRecipe(state, recipe);
 
-    expect(result.producedQuantity).toBe(3);
-    expect(result.state.inventory["agency-crate"]).toBe(3);
-    expect(result.state.inventory["soft-herb"]).toBe(4);
-    expect(result.state.inventory["iron-scrap"]).toBe(1);
+    expect(result.inventory["bronze-sword"]).toBe(2);
+    expect(result.inventory["copper-ore"]).toBe(5);
+    expect(result.lifetime.craftedCounts["bronze-sword"]).toBe(1);
   });
 });

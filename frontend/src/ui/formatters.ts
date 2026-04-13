@@ -1,7 +1,6 @@
 import { gameContent } from "../content";
 import type {
   InventoryEntry,
-  MonsterInstance,
   QuestRequirement,
 } from "../domain/types";
 
@@ -18,31 +17,16 @@ export function formatInventoryEntries(entries: InventoryEntry[]): string {
     .join(" / ");
 }
 
-export function formatAssignment(monster: MonsterInstance): string {
-  const type = monster.currentAssignment.type;
-
-  if (type === "combat") {
-    return `战斗 · ${monster.currentMapId}`;
-  }
-
-  if (type === "idle") {
-    return `放置 · ${monster.currentMapId}`;
-  }
-
-  if (type === "store") {
-    return "经营";
-  }
-
-  return "制作";
-}
-
 export function formatQuestRequirement(requirement: QuestRequirement): string {
-  if (requirement.type === "items") {
-    return formatInventoryEntries(requirement.items);
+  if (requirement.type === "craftItem") {
+    return `${gameContent.itemDefinitionsById[requirement.itemId].name} x${requirement.quantity}`;
   }
 
-  const map = gameContent.mapsById[requirement.mapId];
-  return `${map.name} 胜利 ${requirement.wins} 次`;
+  if (requirement.type === "sellGold") {
+    return `累计营业额 ${requirement.amount}`;
+  }
+
+  return `${gameContent.mapsById[requirement.mapId].name} 通关`;
 }
 
 export function formatPercent(value: number): string {

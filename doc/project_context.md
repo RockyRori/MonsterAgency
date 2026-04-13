@@ -3,28 +3,34 @@
 ## 1. Project identity
 
 - Working name: `Monster Agency`
-- Genre: monster capture + combat + management + crafting + idle/offline progression
-- Platform: web frontend first
-- Core expectation: can run online and support offline idle settlement
-- Product direction: small-scope but extensible systems game, built from a data-driven foundation rather than hard-coded content
+- Target reference: `Weapon Shop Fantasy` style shop/crafting/progression loop
+- Combat and exploration reference: `Neo Monsters` style grid exploration + timeline manual battle
+- Platform: web frontend first, single-player, local save is acceptable
+- Product direction: build a clean, data-driven shop RPG that is fun to replay with friends, not a live-service product
 
-This repository is a **from-scratch rebuild**. Favor clean architecture, explicit boundaries, and content-driven expansion over quick hacks.
+This repository is still a from-scratch rebuild.
+The old monster-management direction is no longer the source of truth.
+From this task onward, the project should be treated as a weapon shop RPG with manual expedition battles.
 
 ---
 
 ## 2. Core fantasy
 
-The player travels across different worlds with a demon pot / monster vessel, captures monsters, and assigns them to different jobs.
+The player runs a fantasy weapon shop.
 
-Monsters are never just combat units. They should always have at least one meaningful destination:
+Daily play should feel like this:
 
-1. active combat
-2. idle farming
-3. store/management work
-4. crafting/production
-5. synthesis / duplicate consumption
+1. hire or manage a small team of adventurers / staff
+2. forge weapons and armor from gathered materials
+3. equip the expedition party with crafted gear
+4. place crafted goods on display for customers
+5. send the party into a grid-based map
+6. move tile by tile, trigger events, and fight enemies in manual timeline battles
+7. bring materials and gold back to the shop
+8. unlock better recipes, districts, staff, and production loops
 
-A good implementation keeps these roles connected through a single resource loop.
+The store is the main identity.
+Exploration and battle exist to feed the store, not replace it.
 
 ---
 
@@ -32,220 +38,205 @@ A good implementation keeps these roles connected through a single resource loop
 
 The intended macro loop is:
 
-1. Explore a map
-2. Fight enemies / capture monsters
-3. Unlock new maps and content
-4. Assign monsters to combat, idle, store, or crafting roles
-5. Generate materials through battle and idle systems
-6. Craft items from shared materials
-7. Use crafted items for either combat power or economic delivery
-8. Complete side quests for high-value rewards
-9. Reinvest rewards into stronger progression
-10. Return to exploration and continue the loop
+1. Accept shop goals, requests, or progression quests
+2. Forge equipment from current recipes
+3. Choose whether to:
+   - equip the party
+   - stock the showcase for customers
+   - save the item for a quest or future craft chain
+4. Run a shop shift to sell stocked goods
+5. Enter an expedition map
+6. Walk on a grid, collect nodes, and trigger encounters
+7. Win manual timeline battles for materials, gold, and map progress
+8. Return to town and reinvest into better crafting and stronger gear
 
-Design rule: every major system must feed this loop instead of existing as isolated feature bloat.
+Design rule: every major feature should tighten this loop.
 
 ---
 
 ## 4. Product pillars
 
-### Pillar A: One monster, many roles
-The same monster framework must support combat and labor roles.
+### Pillar A: Shop first
+The player's identity is a weapons merchant, not a monster collector.
 
-### Pillar B: One item chain, many sinks
-Materials and crafted items should serve both battle and economy.
+### Pillar B: Crafted gear has multiple destinations
+Every forged item should have at least one of these uses:
+- equip on a party member
+- stock for shop sale
+- fulfill a quest / commission
+- serve as recipe progression or material conversion
 
-### Pillar C: Map identity matters
-Maps are not cosmetic; each map has local monster pools and deployment restrictions.
+### Pillar C: Adventurers are dual-purpose assets
+A party member should matter both in town and in expeditions.
+Examples:
+- smithing support
+- counter sales
+- scouting / battle
 
-### Pillar D: Redundant monsters still matter
-Duplicate or non-main-team monsters must remain valuable through labor, idle work, or synthesis.
+### Pillar D: Exploration feeds the workshop
+Map exploration should return materials, progression keys, and new pressure for crafting decisions.
 
 ### Pillar E: Data-driven expansion
-New monsters, maps, quests, items, and encounters should be addable mostly through data/config instead of logic rewrites.
+Adding a new staff member, equipment piece, recipe, district, enemy, or encounter should mostly be a data change.
 
 ---
 
-## 5. Current game structure
+## 5. Current target game structure
 
-## 5.1 Monster System
-Monsters are the main unit in the game.
+## 5.1 Adventurer / Staff System
+The main controllable units are adventurers who can work in town and fight in expeditions.
 
-### Monster template (`MonsterTemplate`)
-Static content definition. Should be data-driven.
+### Adventurer definition (`AdventurerDefinition`)
+Static content data.
 
 Suggested fields:
 - `id`
 - `name`
-- `species`
-- `rarity`
-- `tags`
+- `title`
+- `role`
 - `baseStats`
-- `growthCurveId`
-- `skillPool`
-- `traitPool`
-- `laborProfile`
+- `growth`
+- `utilityProfile`
+- `startingEquipmentIds`
 - `visuals`
 
-### Monster instance (`MonsterInstance`)
-Player-owned runtime entity.
+### Adventurer state (`AdventurerState`)
+Runtime player-owned state.
 
 Suggested fields:
 - `instanceId`
-- `templateId`
-- `isShiny`
+- `definitionId`
 - `level`
 - `exp`
-- `starRank`
-- `shinyStarRank`
-- `skills`
-- `equips`
-- `traits`
-- `currentAssignment`
-- `currentMapId`
-- `lockState`
+- `assignment`
+- `equipment`
+- `bondLevel`
+- `unlockState`
 
-### Dual dimensions
-Every monster may expose two independent evaluation surfaces:
-- combat dimension
-- labor dimension
+### Assignment philosophy
+Each adventurer should be assignable to a clear town or field role:
+- `party`
+- `smithy`
+- `counter`
+- `rest`
 
-Do not collapse them into one oversimplified number too early.
-
-### Duplicate handling
-- same monster can be captured multiple times
-- duplicates are meaningful
-- duplicates can be used for synthesis / star upgrade / cap increase
-- same monster template should not appear twice in the same combat lineup
+The same person should not provide full value in every lane at once.
 
 ---
 
-## 5.2 Combat System
-Current reference direction:
-- timeline-driven battle
-- queue-based lineup structure
-- front unit acts
-- actions consume time
+## 5.2 Item / Equipment System
+The main item categories should be:
 
-### Active combat
-Used for:
-- map progression
-- normal encounters
-- elite/boss encounters
-- capture opportunities
+- raw materials
+- crafted weapons
+- crafted armor
+- crafted accessories
+- occasional utility consumables
 
-### Idle combat
-Used for:
-- online/offline material production
-- passive resource generation
-- map-specific farming
+### Equipment expectations
+Equipment should:
+- materially change expedition stats
+- also act as shop inventory
+- be unlocked gradually through progression
 
-Important: idle combat may be a simplified simulation and does **not** need to mirror full active battle complexity one-to-one.
-
-### Combat constraints
-Combat system should:
-- read battle-ready monster data
-- resolve actions, states, damage, and outcome
-- avoid mutating static content definitions
-
-Combat system should not directly own:
-- world progression rules
-- quest progression logic
-- store economy rules
+### Inventory separation
+Keep these concepts separate:
+- static item definition
+- inventory quantity
+- currently equipped item on an adventurer
+- currently stocked item in the showcase
 
 ---
 
-## 5.3 Map / World System
-The player travels between worlds. Each world contains maps with unique monster pools and rules.
+## 5.3 Crafting / Smithy System
+Crafting is the backbone of the game.
 
-### World (`World`)
-Suggested fields:
+It should:
+- consume materials from expeditions
+- output equipment and goods
+- care about smithing strength or support quality
+- unlock stronger equipment over time
+
+The first implementation may use simple formulas, but the interfaces should stay extensible.
+
+---
+
+## 5.4 Shop / Sales System
+The shop is not just a sell button.
+
+Key ideas:
+- the player chooses what to stock
+- stocked gear converts to gold through a shop shift
+- better counter staff should improve throughput or margin
+- quests and customer demand should pull specific item categories
+
+This system is one of the most important differences from a normal RPG inventory screen.
+
+---
+
+## 5.5 Expedition Map System
+Exploration should be map-based and tile-based.
+
+### Map expectations
+Each district / map should define:
 - `id`
+- `name`
 - `theme`
-- `rules`
-- `monsterPool`
-- `mapIds`
-
-### Map (`Map`)
-Suggested fields:
-- `id`
-- `worldId`
-- `tileData`
-- `collisionData`
-- `encounterTable`
-- `eventPoints`
+- `layout`
+- `tileEvents`
+- `encounterPool`
+- `resourceNodes`
+- `clearReward`
 - `unlockCondition`
 
-### Map restrictions
-A monster can only:
-- fight in its allowed/current map context
-- idle in its assigned map
+### Exploration behavior
+The player should:
+- enter a map with a chosen party
+- move tile by tile
+- only step to adjacent valid tiles
+- trigger resources, treasure, encounters, and exits
 
-Changing map should require lineup / assignment reconfiguration.
-
-These systems are **not** restricted by map:
-- store
-- crafting
-- item selling
+This is the part inspired by `Neo Monsters`, but applied to a weapon shop RPG.
 
 ---
 
-## 5.4 Crafting System
-Crafting consumes materials from battle and idle outputs.
+## 5.6 Combat System
+Combat should be manual timeline battle, not auto-resolve as the long-term target.
 
-Crafted items must support two major sinks:
+### Reference direction
+- each unit acts according to a time value / speed
+- the next actor is visible and deterministic
+- player units wait for manual input on their turn
+- enemies can act automatically
 
-### Combat sink
-- consumables
-- temporary boosts
-- battle support items
+### Scope expectations
+The first implementation can begin with:
+- normal attack
+- manual target selection
+- simple enemy AI
 
-### Economy sink
-- goods for store sale
-- goods required by side quests
+Later it can grow into:
+- skills
+- turn manipulation
+- status effects
+- formation or threat rules
 
-Crafting is a bridge system between combat progression and economy.
-
----
-
-## 5.5 Store / Management System
-Monsters assigned to store work cannot simultaneously fight or idle.
-
-Store goals:
-- convert crafted goods into gold
-- serve as major gold source
-- act as a delivery point or fulfillment surface for side quests
-
-The store system is an economic assignment layer, not just a passive menu.
+Combat logic should remain UI-independent and serializable.
 
 ---
 
-## 5.6 Quest System
-### Main quest
-- no strict time limit
-- unlocks maps, story, and systems
-- teaches player the intended loop
+## 5.7 Quest / Progression System
+The project should support:
 
-### Side quest
-- randomly generated
-- time-limited
-- demands specific items
-- offers higher-risk, higher-reward payouts
+### Main progression
+- unlock recipes
+- unlock districts
+- teach the loop of forge -> stock -> explore -> return
 
-Side quests should pull demand through the crafting and economy pipeline.
-
----
-
-## 5.7 Supporting systems
-The design document currently implies these support domains:
-- `InventorySystem`
-- `EconomySystem`
-- `TimeSystem`
-- `EventSystem`
-- `ProgressionSystem`
-- `AchievementSystem`
-
-Not all need to be implemented on day one. Build them in order of loop importance.
+### Shop requests / side quests
+- request specific crafted items
+- reward gold, recipes, or progression items
+- reinforce the store side of the loop
 
 ---
 
@@ -253,105 +244,99 @@ Not all need to be implemented on day one. Build them in order of loop importanc
 
 ### Tier 1 core systems
 Build these first:
-1. Monster system
-2. Combat system
-3. Economy system
-4. Crafting system
+1. item / equipment system
+2. crafting / smithy system
+3. shop / showcase selling system
+4. expedition map system
+5. manual timeline battle system
 
 ### Tier 1 support systems
-Build immediately after or alongside the core:
-1. Map system
-2. Quest system
-3. Inventory system
-4. Time system
+Build alongside the core:
+1. adventurer / staff system
+2. inventory system
+3. quest / unlock system
+4. save/load system
 
-### Tier 2 / Tier 3 systems
-Can be deferred until the core loop is stable:
-1. Store system polish
-2. Progression/unlock system polish
-3. Event system
-4. Achievement system
+### Later systems
+Can be added after the core loop feels right:
+1. richer skill system
+2. recipe tree depth
+3. customer demand simulation
+4. staff recruitment breadth
+5. offline town processing
 
 ---
 
 ## 7. Design constraints
 
-Use these as non-negotiable defaults unless explicitly revised.
+Use these as default rules:
 
-1. Systems serve the gameplay loop; avoid disconnected mechanics.
-2. Monsters must always have meaningful utility.
-3. Every important resource should ideally have at least two sinks.
-4. Content expansion should mostly happen through data, not logic rewrites.
-5. Prefer deterministic, testable domain logic over UI-coupled logic.
-6. Preserve clean separation between static definitions and runtime state.
-7. Keep simulation logic serializable so save/load and offline settlement remain feasible.
-
----
-
-## 8. Architecture intent for the rebuild
-
-The rebuild should favor a layered structure similar to:
-
-- `content/` or `data/`: static game definitions
-- `domain/`: pure gameplay rules and state transitions
-- `application/`: use cases / orchestration
-- `ui/`: rendering and interaction
-- `infra/`: persistence, adapters, browser APIs
-
-The game should be implementable so that the domain layer can run without the UI.
-
-This is important for:
-- testing
-- offline simulation
-- future balance iteration
-- possible save migration tooling
+1. The shop loop is primary; battle exists to serve it.
+2. Crafted gear should have multiple sinks whenever practical.
+3. Town logic and combat logic should stay separate.
+4. Content expansion should favor adding data over rewriting systems.
+5. Domain logic should remain deterministic and testable.
+6. Runtime state must stay serializable for local saves.
+7. A small but polished vertical slice is better than many disconnected systems.
 
 ---
 
-## 9. Decisions that are still intentionally open
+## 8. Architecture intent
 
-These areas are **not finalized** and should be kept flexible:
-- monster growth model: linear vs branching
-- exact idle settlement formula and offline limits
-- store gameplay depth: pure numbers vs event-driven management
-- active combat depth: more tactical vs more numerical
-- exact item taxonomy and recipe density
-- long-term progression pacing
+The rebuild should still favor:
 
-Do not hard-code assumptions here unless the task explicitly requires it.
+- `content/`: static data definitions
+- `domain/`: pure rules and state transitions
+- `application/`: orchestration and UI-facing use cases
+- `ui/`: formatting and presentation helpers
+- `infra/`: persistence and browser adapters
 
-When forced to choose temporarily, choose the simplest implementation that keeps the future extension path open.
+Important architectural rule:
+shop logic, exploration logic, and combat logic may interact through shared state, but they should not collapse into one giant UI component.
+
+---
+
+## 9. Open decisions
+
+These remain intentionally flexible:
+
+- exact customer demand model
+- number of equipment slots in the final design
+- skill complexity in battle
+- whether town shifts are real-time, turn-based, or both
+- long-term staff recruitment breadth
+- progression pacing and recipe density
+
+When forced to choose for the prototype, choose the simplest reversible version.
 
 ---
 
 ## 10. Implementation philosophy for Codex
 
 When editing this repo, optimize for:
+
 - correctness
 - extensibility
-- explicit naming
-- low coupling
+- clean state shape
 - testability
+- data-driven content
 - maintainable iteration speed
 
-Do not optimize prematurely for content scale or micro-performance unless profiling shows a real need.
+Do not optimize for anti-cheat, multiplayer, or live-service constraints.
 
 ---
 
 ## 11. Glossary
 
-Use these terms consistently in code and docs:
+Use these terms consistently:
 
-- Monster = player-usable creature unit
-- Template = static content definition
-- Instance = player-owned runtime entity
-- Active Combat = manual / foreground battle
-- Idle Combat = timed or offline settlement battle loop
-- World = top-level thematic region
-- Map = explorable area inside a world
-- Assignment = what a monster is currently doing
-- Crafting = converting materials into items
-- Store = selling / fulfilling economic demand
-- Main Quest = progression-guided permanent quest
-- Side Quest = timed demand-driven quest
-
+- Adventurer = controllable character who can work and fight
+- Assignment = that adventurer's current town/field role
+- Equipment = crafted gear that can be equipped or sold
+- Showcase = the stock currently placed out for customers
+- Shop Shift = a sale-processing step for stocked goods
+- Expedition = entering a district map from town
+- Tile Event = resource, treasure, encounter, or exit trigger on the grid
+- Timeline Battle = speed-driven manual battle order
+- Main Quest = progression-driving objective
+- Shop Request = item-demand side objective

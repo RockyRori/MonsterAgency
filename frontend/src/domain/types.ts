@@ -1,19 +1,21 @@
 export type Rarity = "common" | "uncommon" | "rare";
-export type AssignmentType = "combat" | "idle" | "store" | "crafting";
-export type ItemKind = "material" | "consumable" | "trade-good";
-export type QuestType = "main" | "side";
+export type AdventurerAssignment = "party" | "smithy" | "counter" | "rest";
+export type ItemKind = "material" | "equipment" | "consumable";
+export type EquipmentSlot = "weapon" | "armor" | "accessory";
+export type QuestType = "main" | "request";
+export type BattlePhase = "player_turn" | "victory" | "defeat";
 
-export interface StatBlock {
+export interface CombatStats {
   maxHealth: number;
   attack: number;
   defense: number;
   speed: number;
 }
 
-export interface LaborProfile {
-  farming: number;
-  crafting: number;
-  store: number;
+export interface UtilityProfile {
+  smithing: number;
+  sales: number;
+  scouting: number;
 }
 
 export interface InventoryEntry {
@@ -21,44 +23,32 @@ export interface InventoryEntry {
   quantity: number;
 }
 
-export interface MonsterTemplate {
+export interface AdventurerDefinition {
   id: string;
   name: string;
-  species: string;
+  title: string;
+  role: string;
   rarity: Rarity;
-  tags: string[];
-  baseStats: StatBlock;
-  growthCurveId: string;
-  laborProfile: LaborProfile;
-  skillPool: string[];
-  traitPool: string[];
-  allowedMapIds: string[];
-  captureRate: number;
+  baseStats: CombatStats;
+  growth: {
+    health: number;
+    attack: number;
+    defense: number;
+    speed: number;
+  };
+  utilityProfile: UtilityProfile;
+  startingEquipmentIds: string[];
   visuals: {
     emoji: string;
     accent: string;
   };
 }
 
-export interface MonsterAssignment {
-  type: AssignmentType;
-  mapId?: string;
-}
-
-export interface MonsterInstance {
-  instanceId: string;
-  templateId: string;
-  isShiny: boolean;
-  level: number;
-  exp: number;
-  starRank: number;
-  shinyStarRank: number;
-  skills: string[];
-  equips: string[];
-  traits: string[];
-  currentAssignment: MonsterAssignment;
-  currentMapId: string;
-  lockState: "available" | "locked";
+export interface EquipmentBonuses {
+  maxHealth?: number;
+  attack?: number;
+  defense?: number;
+  speed?: number;
 }
 
 export interface ItemDefinition {
@@ -67,6 +57,9 @@ export interface ItemDefinition {
   kind: ItemKind;
   description: string;
   baseValue: number;
+  equipmentSlot?: EquipmentSlot;
+  statBonuses?: EquipmentBonuses;
+  tags: string[];
 }
 
 export interface RecipeDefinition {
@@ -75,60 +68,92 @@ export interface RecipeDefinition {
   description: string;
   inputs: InventoryEntry[];
   output: InventoryEntry;
-  craftingPowerThreshold?: number;
+  requiredSmithing: number;
+}
+
+export interface AdventurerState {
+  instanceId: string;
+  definitionId: string;
+  level: number;
+  exp: number;
+  assignment: AdventurerAssignment;
+  equipment: Partial<Record<EquipmentSlot, string>>;
+}
+
+export interface EnemyDefinition {
+  id: string;
+  name: string;
+  level: number;
+  baseStats: CombatStats;
+  goldDrop: number;
+  itemDrops: InventoryEntry[];
+  visuals: {
+    emoji: string;
+    accent: string;
+  };
 }
 
 export interface EncounterDefinition {
-  monsterTemplateId: string;
-  weight: number;
-  levelRange: {
-    min: number;
-    max: number;
-  };
-  loot: InventoryEntry[];
-  goldReward: number;
-  captureChanceModifier: number;
+  id: string;
+  name: string;
+  enemyIds: string[];
 }
+
+export type MapTileEvent =
+  | {
+      type: "resource";
+      rewards: InventoryEntry[];
+      message: string;
+    }
+  | {
+      type: "treasure";
+      gold: number;
+      message: string;
+    }
+  | {
+      type: "battle";
+      encounterId: string;
+      message: string;
+    }
+  | {
+      type: "exit";
+      message: string;
+    };
 
 export interface MapDefinition {
   id: string;
-  worldId: string;
   name: string;
   theme: string;
   description: string;
-  difficulty: number;
-  deploymentLimit: number;
-  encounterSize: {
-    min: number;
-    max: number;
-  };
-  tileData: string[];
-  collisionData: string[];
-  encounterPool: EncounterDefinition[];
-  eventPoints: string[];
-  idleDropTable: InventoryEntry[];
-  unlockCondition?: {
-    type: "mapWins";
-    mapId: string;
-    wins: number;
+  maxPartySize: number;
+  layout: string[];
+  tileEvents: Record<string, MapTileEvent>;
+  clearReward: {
+    gold: number;
+    items: InventoryEntry[];
   };
 }
 
 export type QuestRequirement =
   | {
-      type: "items";
-      items: InventoryEntry[];
+      type: "craftItem";
+      itemId: string;
+      quantity: number;
     }
   | {
-      type: "mapWins";
+      type: "sellGold";
+      amount: number;
+    }
+  | {
+      type: "clearMap";
       mapId: string;
-      wins: number;
     };
 
 export interface QuestReward {
   gold: number;
   items: InventoryEntry[];
   unlocksMapId?: string;
+  unlocksRecipeIds?: string[];
 }
 
 export interface QuestDefinition {
@@ -140,8 +165,35 @@ export interface QuestDefinition {
   rewards: QuestReward;
 }
 
-export interface MapProgress {
-  wins: number;
+export interface ExplorationState {
+  mapId: string;
+  position: {
+    x: number;
+    y: number;
+  };
+  visitedTileKeys: string[];
+}
+
+export interface BattleUnitState extends CombatStats {
+  unitId: string;
+  name: string;
+  icon: string;
+  team: "player" | "enemy";
+  sourceId: string;
+  nextActionAt: number;
+  currentHealth: number;
+  rewardGold: number;
+  rewardItems: InventoryEntry[];
+}
+
+export interface BattleState {
+  mapId: string;
+  encounterId: string;
+  phase: BattlePhase;
+  playerUnits: BattleUnitState[];
+  enemyUnits: BattleUnitState[];
+  activeUnitId: string | null;
+  log: string[];
 }
 
 export interface QuestRuntimeState {
@@ -149,65 +201,29 @@ export interface QuestRuntimeState {
   claimedAt?: string;
 }
 
+export interface LifetimeProgress {
+  craftedCounts: Record<string, number>;
+  soldGold: number;
+  clearedMapIds: string[];
+}
+
 export interface GameState {
-  version: 1;
-  currentMapId: string;
-  unlockedMapIds: string[];
-  inventory: Record<string, number>;
+  version: 2;
   gold: number;
-  monsters: MonsterInstance[];
-  activeLineup: string[];
-  mapProgress: Record<string, MapProgress>;
+  inventory: Record<string, number>;
+  showcaseInventory: Record<string, number>;
+  adventurers: AdventurerState[];
+  partyOrder: string[];
+  unlockedMapIds: string[];
+  unlockedRecipeIds: string[];
+  currentMapId: string;
+  exploration: ExplorationState;
+  battle: BattleState | null;
+  lifetime: LifetimeProgress;
   questStates: Record<string, QuestRuntimeState>;
-  time: {
-    lastIdleSettlementAt: string;
-  };
   recentActivities: string[];
 }
 
-export interface DerivedMonsterStats extends StatBlock {
-  battlePower: number;
-}
-
-export interface BattleUnit {
-  unitId: string;
-  name: string;
-  templateId: string;
-  icon: string;
-  level: number;
-  maxHealth: number;
-  currentHealth: number;
-  attack: number;
-  defense: number;
-  speed: number;
-  nextActionAt: number;
-  loot: InventoryEntry[];
-  goldReward: number;
-  captureChance: number;
-}
-
-export interface BattleRewards {
-  gold: number;
-  items: InventoryEntry[];
-}
-
-export interface CaptureCandidate {
-  templateId: string;
-  level: number;
-  captureChance: number;
-}
-
-export interface BattleResolution {
-  winner: "player" | "enemy";
-  log: string[];
-  rewards: BattleRewards;
-  survivingPlayerUnits: number;
-  captureCandidates: CaptureCandidate[];
-}
-
-export interface IdleSettlementResult {
-  state: GameState;
-  settledTicks: number;
-  elapsedHours: number;
-  itemsCollected: InventoryEntry[];
+export interface DerivedAdventurerStats extends CombatStats {
+  powerRating: number;
 }

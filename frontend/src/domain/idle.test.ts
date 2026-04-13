@@ -1,22 +1,19 @@
 import { describe, expect, it } from "vitest";
-import { mapDefinitions } from "../content/maps";
+import { gameContent } from "../content";
 import { createInitialGameState } from "./create-game-state";
-import { settleIdleProgress } from "./idle";
+import { applyTileEventRewards, createExplorationState } from "./exploration";
 
-describe("settleIdleProgress", () => {
-  it("converts idle farming power into map drops for each full tick", () => {
-    const state = createInitialGameState("2026-04-13T00:00:00.000Z");
-    const result = settleIdleProgress(
-      state,
-      "2026-04-13T02:00:00.000Z",
-      Object.fromEntries(mapDefinitions.map((map) => [map.id, map])),
-      {
-        "verdant-border": 4,
-      },
-    );
+describe("exploration events", () => {
+  it("grants node rewards when stepping on a fresh resource tile", () => {
+    const state = {
+      ...createInitialGameState(),
+      exploration: createExplorationState("copper-trail"),
+    };
+    const tileKey = "3,2";
+    const result = applyTileEventRewards(state, tileKey);
 
-    expect(result.settledTicks).toBe(4);
-    expect(result.state.inventory["soft-herb"]).toBe(10);
-    expect(result.state.inventory["ember-dust"]).toBe(8);
+    expect(result.message).toBe(gameContent.mapsById["copper-trail"].tileEvents[tileKey].message);
+    expect(result.state.inventory["copper-ore"]).toBe(10);
+    expect(result.state.inventory["beast-hide"]).toBe(6);
   });
 });

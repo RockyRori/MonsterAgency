@@ -1,12 +1,16 @@
-# Codex Rules
+﻿# Codex Rules
 
 ## 1. Your role in this repository
 
 You are working inside a from-scratch rebuild of a web game project.
 
-Your job is to help implement a **clean, extensible, data-driven game architecture** for a monster capture + combat + management + crafting + idle game.
+Your job is to help implement a clean, extensible, data-driven weapon shop RPG inspired by:
 
-Do not behave like a code generator that only tries to satisfy the nearest prompt. Behave like an engineer maintaining long-term project coherence.
+- `Weapon Shop Fantasy` for the town / crafting / sales loop
+- `Neo Monsters` for tile-based expedition flow and manual timeline battle
+
+Do not optimize for the old monster-management concept.
+That direction has been superseded by the current user instruction and `project_context.md`.
 
 ---
 
@@ -34,13 +38,14 @@ If two sources conflict, prefer the higher-priority source and document the conf
 - prefer explicitness over cleverness
 - update docs when behavior or structure materially changes
 - add or update tests for non-trivial logic changes
-- explain assumptions when the spec is incomplete
+- explain assumptions when the design is incomplete
 
 ### Never do these
-- do not rewrite large areas without need
+- do not preserve obsolete monster-specific assumptions just because they existed first
 - do not introduce hidden magic or surprising abstractions
-- do not hard-code design assumptions that are still open questions
-- do not mix domain logic into UI code unless the repo already requires it
+- do not hard-code content that should obviously live in data
+- do not mix combat formulas into React components
+- do not collapse shop logic and expedition logic into one monolithic UI blob
 - do not add dependencies casually
 - do not silently ignore failing tests or type errors
 - do not leave TODOs in place of core logic unless explicitly asked
@@ -49,119 +54,112 @@ If two sources conflict, prefer the higher-priority source and document the conf
 
 ## 4. Architecture rules
 
-### 4.1 Keep static data separate from runtime state
+### 4.1 Keep definitions separate from runtime state
 Examples:
-- monster templates != monster instances
-- item definitions != inventory entries
-- map definitions != live map session state
+- adventurer definitions != owned adventurer state
+- item definitions != inventory quantities
+- equipped gear != stocked showcase items
+- map definitions != current exploration session
 
 ### 4.2 Keep domain logic separate from presentation
-UI components should display state and trigger actions.
-They should not own core combat formulas, reward formulas, settlement formulas, or content rules.
+UI components may show values, expose actions, and display state.
+They should not own smithing formulas, selling formulas, movement validation, turn-order logic, or reward resolution.
 
-### 4.3 Prefer pure functions for game rules
-Whenever possible, implement gameplay logic as deterministic functions that:
-- accept explicit input state
-- return explicit output state / events
-- avoid implicit global mutation
+### 4.3 Prefer pure functions for rules
+Whenever practical, game rules should be deterministic functions that:
+- accept explicit state
+- return explicit next state or events
+- avoid hidden mutation
 
-This is especially important for:
-- battle resolution
-- idle settlement
-- crafting recipes
-- quest completion checks
-- economy calculations
+Prioritize this for:
+- crafting
+- shop shift selling
+- exploration movement
+- battle turn progression
+- quest completion
 
 ### 4.4 Design for serialization
-Game state should remain save/load friendly.
-Avoid class-heavy patterns or browser-coupled state containers when simple serializable objects work.
+State should remain local-save friendly.
+Avoid class-heavy or browser-coupled state when plain serializable objects are enough.
 
 ### 4.5 Design for content expansion
-When adding a new monster, item, map, or quest, the default path should be “add data” rather than “edit engine logic”.
+New equipment, recipes, maps, enemies, and quests should mostly be add-data operations.
 
 ---
 
 ## 5. Preferred implementation order
 
-When a task is broad, bias toward this order:
+When the task is broad, bias toward:
 
-1. define domain model / types
-2. define state transitions or use cases
-3. add tests for rules
-4. wire persistence or adapters if needed
-5. connect UI last
+1. define domain models and types
+2. define core state transitions
+3. add or update tests
+4. wire persistence
+5. connect UI
 
-If UI-first work is requested, still keep game rules extractable.
+If a UI-first request comes in, still keep the underlying rule logic extractable.
 
 ---
 
 ## 6. Rules for incomplete design areas
 
-The project intentionally leaves some areas open.
-Examples include:
-- growth model details
-- idle settlement exact numbers
-- store complexity depth
-- combat complexity depth
+Several design areas are intentionally open:
 
-When touching these areas:
+- customer demand sophistication
+- battle skill depth
+- recipe tree size
+- staffing breadth
+- long-term progression pacing
+
+When implementing these:
 - choose the simplest viable model
-- keep interfaces open for later replacement
-- avoid irreversible schema decisions unless necessary
-- mark temporary balancing constants clearly
-
-Good pattern:
-- build an interface + simple default implementation
-- keep formulas centralized
-- avoid scattering balance values across files
+- keep interfaces replaceable
+- centralize formulas
+- avoid irreversible schema decisions unless required
 
 ---
 
 ## 7. Code quality standards
 
 ### Naming
-- use clear domain names
-- prefer full words over abbreviations
-- keep terminology consistent with `project_context.md`
+- use clear domain names from the current weapon-shop context
+- prefer `adventurer`, `equipment`, `showcase`, `shopShift`, `exploration`, `battle`
+- avoid stale monster terminology unless a file is intentionally transitional
 
 ### Functions
-- prefer small, focused functions
-- keep function side effects obvious
-- avoid long parameter lists when a typed object is clearer
+- keep functions focused
+- make side effects explicit
+- prefer typed parameter objects when they improve clarity
 
 ### Types
-- define important domain types explicitly
-- do not hide important game state in `any`
-- prefer discriminated unions / enums for controlled state where appropriate
+- explicitly model important gameplay state
+- avoid `any`
+- use unions or enums where the state machine matters
 
 ### Errors
 - fail loudly on impossible states
-- use defensive validation at data boundaries
-- avoid swallowing errors silently
+- validate at data boundaries
+- do not silently swallow invalid game transitions
 
 ### Comments
-- comment the reason, not the obvious syntax
-- add short doc comments for non-obvious domain rules
+- comment the rule or intent
+- avoid obvious syntax narration
 
 ---
 
 ## 8. Testing rules
 
-For any non-trivial gameplay change, add tests or update tests.
+For non-trivial gameplay changes, add or update tests.
 
 Prioritize tests for:
-- battle timeline resolution
-- lineup/front-unit behavior
-- reward calculation
-- crafting validation
+- crafting validation and output
+- shop shift selling resolution
+- exploration movement and tile events
+- battle turn progression
 - quest requirement checks
-- offline/idle settlement
-- synthesis / duplicate consumption
+- equipment/stat calculation
 
-Prefer fast unit tests for domain logic.
-Use integration tests only where module interaction actually matters.
-
-If the repo currently lacks tests in an area, start with the smallest useful test coverage instead of skipping tests entirely.
+Prefer fast domain unit tests.
 
 ---
 
@@ -169,31 +167,26 @@ If the repo currently lacks tests in an area, start with the smallest useful tes
 
 ### When adding a feature
 - inspect neighboring patterns first
-- reuse existing conventions where they are sound
-- create new abstractions only when repetition or future extension justifies them
+- reuse good conventions
+- add new abstractions only when they earn their complexity
 
 ### When refactoring
-- preserve behavior unless the task explicitly changes behavior
-- state the behavioral delta clearly when it changes
-- avoid opportunistic refactors unrelated to the task unless they unblock correctness
+- preserve behavior unless the task intentionally changes it
+- if behavior changes, make the delta clear
+- avoid unrelated opportunistic rewrites
 
 ### When fixing bugs
-- identify the actual root cause
-- prefer fixing the invariant instead of patching symptoms
+- identify the invariant that broke
+- fix the rule, not just the symptom
 - add regression coverage when practical
 
 ---
 
 ## 10. Dependency policy
 
-Before adding a new dependency, assume the default answer is “no”.
+Default answer to new dependencies is still `no`.
 
-Only add one when at least one of the following is true:
-- it removes substantial complexity
-- it is already standard in the repo stack
-- it solves a problem that should not be reimplemented internally
-
-If a lightweight local utility is enough, prefer the local utility.
+Only add a dependency when it clearly removes meaningful complexity and fits the repo stack.
 
 ---
 
@@ -201,16 +194,12 @@ If a lightweight local utility is enough, prefer the local utility.
 
 Do not prematurely optimize.
 
-First prioritize:
+First optimize for:
 - correct rules
 - understandable state flow
 - maintainable code
 
-Only optimize when:
-- a hot path is obvious, or
-- measurement shows a real issue
-
-When optimizing, keep code readable and preserve test coverage.
+Only optimize when a hot path is obvious or measured.
 
 ---
 
@@ -221,76 +210,60 @@ Update documentation when you change:
 - public interfaces
 - folder structure
 - save schema
-- balancing model assumptions
+- design assumptions
 - developer workflow
 
 Keep docs concise and operational.
-Do not write marketing copy.
 
 ---
 
-## 13. Output format for implementation tasks
+## 13. Done criteria
 
-Unless the user asks otherwise, structure your response like this:
+A task is only done when most of the following are true:
 
-1. what you changed
-2. why this approach
-3. files touched
-4. risks / follow-up
-5. verification performed
-
-Keep it short and concrete.
-
----
-
-## 14. What “done” means
-
-A task is not done just because code was written.
-
-A task is done when most of the following are true:
 - the requested behavior exists
-- code matches local architecture
+- code matches the current architecture
 - types are coherent
 - obvious edge cases are handled
-- tests pass or the missing coverage is clearly called out
-- docs are updated when needed
+- tests pass or missing coverage is clearly stated
+- docs reflect the current design
 - no unnecessary unrelated breakage was introduced
 
 ---
 
-## 15. Special rules for this project
+## 14. Project-specific checkpoints
 
-### Monster-related changes
+### Adventurer-related changes
 Always ask:
-- is this template data or instance state?
-- does this affect combat, labor, or both?
-- does this accidentally make duplicate monsters useless?
+- is this static class data or owned runtime state?
+- does this affect town value, combat value, or both?
+- does assignment exclusivity remain clear?
 
-### Item-related changes
+### Equipment-related changes
 Always ask:
-- is this item part of battle flow, economy flow, or both?
-- is the item sink/source relationship clear?
+- is the item meant to be equipped, sold, or both?
+- is inventory separate from equipment slots and showcase stock?
+- does the change reinforce the shop loop?
 
 ### Map-related changes
 Always ask:
-- is this world-level or map-level data?
-- are map restrictions being respected?
-- should this affect active combat, idle combat, or neither?
+- is this map data or exploration session state?
+- are tile transitions validated?
+- does this event feed back into crafting or progression?
 
-### Quest-related changes
+### Battle-related changes
 Always ask:
-- is this permanent progression or timed demand?
-- does it reinforce the main gameplay loop?
+- is the turn order deterministic?
+- is the player making meaningful manual choices?
+- can this rule live outside React?
 
 ---
 
-## 16. If you are unsure
+## 15. If you are unsure
 
 If the task is ambiguous:
-1. infer from existing code and `project_context.md`
+1. infer from the current weapon-shop design direction
 2. choose the simplest reversible solution
 3. state your assumption explicitly
 
-Do not freeze. Do not over-design. Do not invent a massive framework just because the future might need it.
-
-
+Do not freeze. Do not over-design. Do not invent a massive framework before the vertical slice earns it.

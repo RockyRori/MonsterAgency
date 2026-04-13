@@ -1,19 +1,16 @@
-import {
-  addInventoryEntries,
-  hasInventory,
-  removeInventoryEntries,
-} from "./inventory";
+import { addInventoryEntries } from "./inventory";
 import type { GameState, QuestDefinition, QuestRequirement } from "./types";
 
-function requirementMet(
-  state: GameState,
-  requirement: QuestRequirement,
-): boolean {
-  if (requirement.type === "items") {
-    return hasInventory(state.inventory, requirement.items);
+function requirementMet(state: GameState, requirement: QuestRequirement): boolean {
+  if (requirement.type === "craftItem") {
+    return (state.lifetime.craftedCounts[requirement.itemId] ?? 0) >= requirement.quantity;
   }
 
-  return (state.mapProgress[requirement.mapId]?.wins ?? 0) >= requirement.wins;
+  if (requirement.type === "sellGold") {
+    return state.lifetime.soldGold >= requirement.amount;
+  }
+
+  return state.lifetime.clearedMapIds.includes(requirement.mapId);
 }
 
 export function isQuestClaimed(state: GameState, questId: string): boolean {
@@ -38,25 +35,20 @@ export function completeQuest(
   quest: QuestDefinition,
   nowIso: string,
 ): GameState {
-  const itemRequirements = quest.requirements.flatMap((requirement) =>
-    requirement.type === "items" ? requirement.items : [],
-  );
-  const spentInventory = itemRequirements.length
-    ? removeInventoryEntries(state.inventory, itemRequirements)
-    : state.inventory;
-  const rewardedInventory = addInventoryEntries(
-    spentInventory,
-    quest.rewards.items,
-  );
+  const rewardedInventory = addInventoryEntries(state.inventory, quest.rewards.items);
   const unlockedMapIds = quest.rewards.unlocksMapId
     ? Array.from(new Set([...state.unlockedMapIds, quest.rewards.unlocksMapId]))
     : state.unlockedMapIds;
+  const unlockedRecipeIds = quest.rewards.unlocksRecipeIds
+    ? Array.from(new Set([...state.unlockedRecipeIds, ...quest.rewards.unlocksRecipeIds]))
+    : state.unlockedRecipeIds;
 
   return {
     ...state,
     inventory: rewardedInventory,
     gold: state.gold + quest.rewards.gold,
     unlockedMapIds,
+    unlockedRecipeIds,
     questStates: {
       ...state.questStates,
       [quest.id]: {

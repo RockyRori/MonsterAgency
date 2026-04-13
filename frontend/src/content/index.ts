@@ -1,12 +1,425 @@
-import { itemDefinitions, recipeDefinitions } from "./items";
-import { mapDefinitions } from "./maps";
-import { monsterTemplates } from "./monsters";
-import { questDefinitions } from "./quests";
+import type {
+  AdventurerDefinition,
+  EnemyDefinition,
+  EncounterDefinition,
+  ItemDefinition,
+  MapDefinition,
+  QuestDefinition,
+  RecipeDefinition,
+} from "../domain/types";
+
+export const adventurerDefinitions: AdventurerDefinition[] = [
+  {
+    id: "lyra",
+    name: "莱拉",
+    title: "见习锻冶师",
+    role: "前排战士 / 铁匠助手",
+    rarity: "common",
+    baseStats: { maxHealth: 88, attack: 16, defense: 11, speed: 9 },
+    growth: { health: 14, attack: 3, defense: 2, speed: 1 },
+    utilityProfile: { smithing: 6, sales: 1, scouting: 2 },
+    startingEquipmentIds: ["bronze-sword", "padded-vest"],
+    visuals: { emoji: "⚒️", accent: "#d78b45" },
+  },
+  {
+    id: "mira",
+    name: "米菈",
+    title: "街角招待员",
+    role: "柜台 / 辅助输出",
+    rarity: "common",
+    baseStats: { maxHealth: 70, attack: 12, defense: 9, speed: 13 },
+    growth: { health: 10, attack: 2, defense: 2, speed: 2 },
+    utilityProfile: { smithing: 1, sales: 7, scouting: 3 },
+    startingEquipmentIds: ["oak-wand", "linen-coat"],
+    visuals: { emoji: "🧾", accent: "#6ba7b5" },
+  },
+  {
+    id: "torr",
+    name: "托尔",
+    title: "老练采集手",
+    role: "侦查 / 素材回收",
+    rarity: "uncommon",
+    baseStats: { maxHealth: 76, attack: 15, defense: 8, speed: 15 },
+    growth: { health: 11, attack: 3, defense: 1, speed: 2 },
+    utilityProfile: { smithing: 2, sales: 2, scouting: 8 },
+    startingEquipmentIds: ["hunter-knife", "scout-cloak"],
+    visuals: { emoji: "🧭", accent: "#74a06a" },
+  },
+  {
+    id: "selene",
+    name: "赛琳",
+    title: "晶矿术士",
+    role: "后排法师 / 高级工坊",
+    rarity: "rare",
+    baseStats: { maxHealth: 66, attack: 18, defense: 7, speed: 14 },
+    growth: { health: 9, attack: 4, defense: 1, speed: 2 },
+    utilityProfile: { smithing: 5, sales: 3, scouting: 4 },
+    startingEquipmentIds: ["apprentice-orb", "linen-coat"],
+    visuals: { emoji: "🔮", accent: "#b3a4db" },
+  },
+];
+
+export const itemDefinitions: ItemDefinition[] = [
+  {
+    id: "copper-ore",
+    name: "铜矿石",
+    kind: "material",
+    description: "最基础的锻造素材，前期大多数武器都会用到。",
+    baseValue: 8,
+    tags: ["ore", "smithing"],
+  },
+  {
+    id: "beast-hide",
+    name: "兽皮",
+    kind: "material",
+    description: "用于制作轻甲和挂饰，也是订单常见材料。",
+    baseValue: 10,
+    tags: ["hide", "armor"],
+  },
+  {
+    id: "wind-thread",
+    name: "风纱线",
+    kind: "material",
+    description: "轻量纤维，适合做速度向装备。",
+    baseValue: 12,
+    tags: ["cloth", "accessory"],
+  },
+  {
+    id: "crystal-shard",
+    name: "晶簇碎片",
+    kind: "material",
+    description: "较高级的魔导材料，能抬高装备售价。",
+    baseValue: 18,
+    tags: ["crystal", "magic"],
+  },
+  {
+    id: "bronze-sword",
+    name: "青铜长剑",
+    kind: "equipment",
+    description: "最基础但销路稳定的近战武器。",
+    baseValue: 55,
+    equipmentSlot: "weapon",
+    statBonuses: { attack: 5 },
+    tags: ["weapon", "sword"],
+  },
+  {
+    id: "oak-wand",
+    name: "橡木法杖",
+    kind: "equipment",
+    description: "轻型法杖，适合前期法系和店内展示。",
+    baseValue: 60,
+    equipmentSlot: "weapon",
+    statBonuses: { attack: 4, speed: 1 },
+    tags: ["weapon", "magic"],
+  },
+  {
+    id: "hunter-knife",
+    name: "猎人短刃",
+    kind: "equipment",
+    description: "为轻装冒险者准备的灵巧武器。",
+    baseValue: 64,
+    equipmentSlot: "weapon",
+    statBonuses: { attack: 4, speed: 2 },
+    tags: ["weapon", "scout"],
+  },
+  {
+    id: "iron-greataxe",
+    name: "铁脊巨斧",
+    kind: "equipment",
+    description: "高售价重型武器，也是中期招牌货。",
+    baseValue: 110,
+    equipmentSlot: "weapon",
+    statBonuses: { attack: 9, speed: -1 },
+    tags: ["weapon", "heavy"],
+  },
+  {
+    id: "apprentice-orb",
+    name: "见习术珠",
+    kind: "equipment",
+    description: "为魔导学徒定制的简易核心。",
+    baseValue: 84,
+    equipmentSlot: "weapon",
+    statBonuses: { attack: 7, speed: 1 },
+    tags: ["weapon", "magic"],
+  },
+  {
+    id: "padded-vest",
+    name: "厚布护衣",
+    kind: "equipment",
+    description: "便宜耐穿，适合大量生产。",
+    baseValue: 48,
+    equipmentSlot: "armor",
+    statBonuses: { maxHealth: 10, defense: 3 },
+    tags: ["armor", "starter"],
+  },
+  {
+    id: "linen-coat",
+    name: "亚麻外套",
+    kind: "equipment",
+    description: "轻型护具，适合柜台和后排角色。",
+    baseValue: 52,
+    equipmentSlot: "armor",
+    statBonuses: { maxHealth: 6, speed: 1, defense: 2 },
+    tags: ["armor", "light"],
+  },
+  {
+    id: "scout-cloak",
+    name: "侦查披风",
+    kind: "equipment",
+    description: "适合野外移动，战斗中也有不错的速度收益。",
+    baseValue: 72,
+    equipmentSlot: "armor",
+    statBonuses: { maxHealth: 8, speed: 2, defense: 2 },
+    tags: ["armor", "scout"],
+  },
+  {
+    id: "lucky-badge",
+    name: "开运徽章",
+    kind: "equipment",
+    description: "常见但好卖的饰品，可以顺便补一点速度。",
+    baseValue: 65,
+    equipmentSlot: "accessory",
+    statBonuses: { speed: 2, attack: 1 },
+    tags: ["accessory", "shop"],
+  },
+];
+
+export const recipeDefinitions: RecipeDefinition[] = [
+  {
+    id: "bronze-sword",
+    name: "锻造青铜长剑",
+    description: "前期最稳定的销量款式，也是主线引导装备。",
+    inputs: [
+      { itemId: "copper-ore", quantity: 3 },
+      { itemId: "beast-hide", quantity: 1 },
+    ],
+    output: { itemId: "bronze-sword", quantity: 1 },
+    requiredSmithing: 4,
+  },
+  {
+    id: "padded-vest",
+    name: "缝制厚布护衣",
+    description: "成本低，适合同时拿来装备和售卖。",
+    inputs: [
+      { itemId: "beast-hide", quantity: 2 },
+      { itemId: "wind-thread", quantity: 1 },
+    ],
+    output: { itemId: "padded-vest", quantity: 1 },
+    requiredSmithing: 3,
+  },
+  {
+    id: "hunter-knife",
+    name: "打造猎人短刃",
+    description: "轻装职业的常备武器，也很适合做展示货。",
+    inputs: [
+      { itemId: "copper-ore", quantity: 2 },
+      { itemId: "wind-thread", quantity: 1 },
+    ],
+    output: { itemId: "hunter-knife", quantity: 1 },
+    requiredSmithing: 4,
+  },
+  {
+    id: "lucky-badge",
+    name: "制作开运徽章",
+    description: "柜台热销小饰品，适合给店里快速回本。",
+    inputs: [
+      { itemId: "wind-thread", quantity: 2 },
+      { itemId: "crystal-shard", quantity: 1 },
+    ],
+    output: { itemId: "lucky-badge", quantity: 1 },
+    requiredSmithing: 6,
+  },
+  {
+    id: "iron-greataxe",
+    name: "锻造铁脊巨斧",
+    description: "中期高价重武器，用来抬升店铺营收和前排战力。",
+    inputs: [
+      { itemId: "copper-ore", quantity: 4 },
+      { itemId: "crystal-shard", quantity: 2 },
+      { itemId: "beast-hide", quantity: 1 },
+    ],
+    output: { itemId: "iron-greataxe", quantity: 1 },
+    requiredSmithing: 7,
+  },
+];
+
+export const enemyDefinitions: EnemyDefinition[] = [
+  {
+    id: "slime",
+    name: "矿坑史莱姆",
+    level: 1,
+    baseStats: { maxHealth: 42, attack: 10, defense: 5, speed: 9 },
+    goldDrop: 12,
+    itemDrops: [{ itemId: "copper-ore", quantity: 1 }],
+    visuals: { emoji: "🟢", accent: "#69a34d" },
+  },
+  {
+    id: "cave-bat",
+    name: "洞窟蝠",
+    level: 2,
+    baseStats: { maxHealth: 36, attack: 11, defense: 4, speed: 14 },
+    goldDrop: 14,
+    itemDrops: [{ itemId: "wind-thread", quantity: 1 }],
+    visuals: { emoji: "🦇", accent: "#756b8f" },
+  },
+  {
+    id: "ore-wolf",
+    name: "矿灰狼",
+    level: 2,
+    baseStats: { maxHealth: 50, attack: 13, defense: 6, speed: 12 },
+    goldDrop: 18,
+    itemDrops: [{ itemId: "beast-hide", quantity: 1 }],
+    visuals: { emoji: "🐺", accent: "#9f8363" },
+  },
+  {
+    id: "crystal-goblin",
+    name: "晶矿哥布林",
+    level: 3,
+    baseStats: { maxHealth: 58, attack: 15, defense: 8, speed: 11 },
+    goldDrop: 26,
+    itemDrops: [{ itemId: "crystal-shard", quantity: 1 }],
+    visuals: { emoji: "👺", accent: "#7aa36d" },
+  },
+];
+
+export const encounterDefinitions: EncounterDefinition[] = [
+  {
+    id: "trail-pests",
+    name: "坑道杂兵",
+    enemyIds: ["slime", "cave-bat"],
+  },
+  {
+    id: "trail-wolf",
+    name: "矿灰狼伏击",
+    enemyIds: ["ore-wolf"],
+  },
+  {
+    id: "mine-guards",
+    name: "晶矿守点",
+    enemyIds: ["ore-wolf", "crystal-goblin"],
+  },
+];
+
+export const mapDefinitions: MapDefinition[] = [
+  {
+    id: "copper-trail",
+    name: "铜脉小径",
+    theme: "新手采矿区",
+    description: "适合练习锻造循环的第一张地图，资源稳定，战斗压力较低。",
+    maxPartySize: 3,
+    layout: [
+      "#######",
+      "#S..M.#",
+      "#.#R#.#",
+      "#...T.#",
+      "#.M..E#",
+      "#######",
+    ],
+    tileEvents: {
+      "4,1": { type: "battle", encounterId: "trail-pests", message: "前方出现了坑道杂兵。"},
+      "3,2": {
+        type: "resource",
+        rewards: [
+          { itemId: "copper-ore", quantity: 2 },
+          { itemId: "beast-hide", quantity: 1 },
+        ],
+        message: "你在废弃矿车旁找到了可用素材。",
+      },
+      "4,3": {
+        type: "treasure",
+        gold: 28,
+        message: "旧客户留下了一袋铜币。",
+      },
+      "2,4": { type: "battle", encounterId: "trail-wolf", message: "矿灰狼堵住了回程路线。"},
+      "5,4": { type: "exit", message: "你已经找到这片区域的出口。"},
+    },
+    clearReward: {
+      gold: 45,
+      items: [{ itemId: "copper-ore", quantity: 2 }],
+    },
+  },
+  {
+    id: "crystal-shaft",
+    name: "晶簇矿井",
+    theme: "中阶魔导矿区",
+    description: "能产出高价值晶簇，但怪物更危险，适合带着成型装备前往。",
+    maxPartySize: 3,
+    layout: [
+      "########",
+      "#S..M..#",
+      "#.#R#T.#",
+      "#...#..#",
+      "#.M...E#",
+      "########",
+    ],
+    tileEvents: {
+      "4,1": { type: "battle", encounterId: "mine-guards", message: "矿井深处的守点敌人拦住了你。"},
+      "3,2": {
+        type: "resource",
+        rewards: [
+          { itemId: "crystal-shard", quantity: 2 },
+          { itemId: "wind-thread", quantity: 1 },
+        ],
+        message: "你撬下了一批完整的晶簇碎片。",
+      },
+      "5,2": {
+        type: "treasure",
+        gold: 40,
+        message: "废弃补给箱里藏着额外赏金。",
+      },
+      "2,4": { type: "battle", encounterId: "trail-pests", message: "侧坑也有敌人盘踞。"},
+      "6,4": { type: "exit", message: "矿井尽头的升降梯已经修复。"},
+    },
+    clearReward: {
+      gold: 70,
+      items: [{ itemId: "crystal-shard", quantity: 1 }],
+    },
+  },
+];
+
+export const questDefinitions: QuestDefinition[] = [
+  {
+    id: "forge-first-weapon",
+    type: "main",
+    name: "第一把招牌武器",
+    description: "先锻出一把能拿得出手的青铜长剑，店铺才算正式开张。",
+    requirements: [{ type: "craftItem", itemId: "bronze-sword", quantity: 1 }],
+    rewards: {
+      gold: 40,
+      items: [{ itemId: "wind-thread", quantity: 1 }],
+      unlocksRecipeIds: ["lucky-badge"],
+    },
+  },
+  {
+    id: "first-sales-day",
+    type: "request",
+    name: "开门第一天",
+    description: "通过店铺营业累计卖出 90 金币，证明你的陈列能打动顾客。",
+    requirements: [{ type: "sellGold", amount: 90 }],
+    rewards: {
+      gold: 55,
+      items: [{ itemId: "copper-ore", quantity: 2 }],
+    },
+  },
+  {
+    id: "clear-copper-trail",
+    type: "main",
+    name: "清通铜脉小径",
+    description: "打通第一张采集区，才能把店铺经营推进到更高层级。",
+    requirements: [{ type: "clearMap", mapId: "copper-trail" }],
+    rewards: {
+      gold: 80,
+      items: [{ itemId: "crystal-shard", quantity: 1 }],
+      unlocksMapId: "crystal-shaft",
+      unlocksRecipeIds: ["iron-greataxe"],
+    },
+  },
+];
 
 export const gameContent = {
-  monsterTemplates,
-  monsterTemplatesById: Object.fromEntries(
-    monsterTemplates.map((template) => [template.id, template]),
+  adventurerDefinitions,
+  adventurersById: Object.fromEntries(
+    adventurerDefinitions.map((adventurer) => [adventurer.id, adventurer]),
   ),
   itemDefinitions,
   itemDefinitionsById: Object.fromEntries(
@@ -15,6 +428,14 @@ export const gameContent = {
   recipeDefinitions,
   recipeDefinitionsById: Object.fromEntries(
     recipeDefinitions.map((recipe) => [recipe.id, recipe]),
+  ),
+  enemyDefinitions,
+  enemiesById: Object.fromEntries(
+    enemyDefinitions.map((enemy) => [enemy.id, enemy]),
+  ),
+  encounterDefinitions,
+  encountersById: Object.fromEntries(
+    encounterDefinitions.map((encounter) => [encounter.id, encounter]),
   ),
   mapDefinitions,
   mapsById: Object.fromEntries(mapDefinitions.map((map) => [map.id, map])),

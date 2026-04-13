@@ -4,6 +4,7 @@
 **/node_modules/*
 **/dist/*
 **/coverage/*
+**/*.tsbuildinfo
 
 # Mac builtin
 .DS_Store

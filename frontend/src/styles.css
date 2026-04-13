@@ -313,6 +313,15 @@ button:disabled {
   gap: 12px;
 }
 
+.section-gap {
+  margin-top: 16px;
+}
+
+.empty-copy {
+  margin: 0;
+  color: rgba(246, 240, 229, 0.7);
+}
+
 .inventory-row {
   display: flex;
   justify-content: space-between;
@@ -338,6 +347,113 @@ button:disabled {
   font-size: 0.85rem;
 }
 
+.exploration-panel,
+.battle-layout,
+.equip-grid {
+  display: grid;
+  gap: 16px;
+}
+
+.exploration-panel {
+  grid-template-columns: minmax(280px, 420px) 180px;
+  align-items: start;
+}
+
+.grid-board {
+  display: grid;
+  grid-template-columns: repeat(8, minmax(32px, 1fr));
+  gap: 8px;
+}
+
+.grid-tile {
+  display: grid;
+  place-items: center;
+  aspect-ratio: 1 / 1;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.08);
+  color: #f6f0e5;
+  font-weight: 700;
+}
+
+.grid-tile-wall {
+  background: rgba(20, 23, 29, 0.9);
+}
+
+.grid-tile-fog {
+  background: rgba(255, 255, 255, 0.03);
+  color: transparent;
+}
+
+.grid-tile-active {
+  background: linear-gradient(135deg, #eb9f41, #d45c3f);
+  color: #1d1107;
+}
+
+.grid-tile-start {
+  background: rgba(84, 140, 132, 0.28);
+}
+
+.grid-tile-exit {
+  background: rgba(112, 190, 132, 0.25);
+}
+
+.grid-tile-battle {
+  background: rgba(212, 92, 63, 0.28);
+}
+
+.grid-tile-resource {
+  background: rgba(215, 139, 69, 0.26);
+}
+
+.grid-tile-treasure {
+  background: rgba(210, 181, 97, 0.28);
+}
+
+.move-controls {
+  display: grid;
+  gap: 10px;
+}
+
+.move-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.battle-layout {
+  grid-template-columns: 1fr 1fr;
+}
+
+.battle-unit-card button {
+  margin-top: 12px;
+  width: 100%;
+}
+
+.equip-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin-top: 12px;
+}
+
+.equip-field {
+  display: grid;
+  gap: 6px;
+}
+
+.equip-field span {
+  font-size: 0.85rem;
+  color: rgba(246, 240, 229, 0.72);
+  text-transform: capitalize;
+}
+
+.equip-field select {
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.08);
+  color: inherit;
+}
+
 @media (max-width: 900px) {
   .app-shell {
     width: min(100vw - 24px, 1440px);
@@ -356,5 +472,15 @@ button:disabled {
   .notice,
   .inventory-row {
     flex-direction: column;
+  }
+
+  .exploration-panel,
+  .battle-layout,
+  .equip-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .grid-board {
+    grid-template-columns: repeat(8, minmax(24px, 1fr));
   }
 }

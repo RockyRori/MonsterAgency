@@ -1,26 +1,44 @@
-import { useEffect, useRef, useState } from "react";
+﻿import { useEffect, useMemo, useState } from "react";
 import { gameContent } from "../content";
 import {
-  buildMonsterInstance,
-  createInitialGameState,
-} from "../domain/create-game-state";
-import {
-  buildEncounterParty,
-  createPlayerBattleParty,
-  resolveBattle,
+  createBattleState,
+  getBattleRewards,
+  performPlayerAttack,
 } from "../domain/battle";
-import { canCraftRecipe, craftRecipe } from "../domain/crafting";
-import { settleIdleProgress } from "../domain/idle";
-import { addInventoryEntries } from "../domain/inventory";
-import { validateActiveLineup } from "../domain/lineup";
+import {
+  canCraftRecipe,
+  craftRecipe,
+  getSmithingPower,
+} from "../domain/crafting";
+import { createInitialGameState } from "../domain/create-game-state";
+import {
+  applyTileEventRewards,
+  canMoveToTile,
+  createExplorationState,
+} from "../domain/exploration";
+import {
+  addInventoryEntries,
+  removeInventoryEntries,
+} from "../domain/inventory";
 import {
   canCompleteQuest,
   completeQuest,
   isQuestClaimed,
 } from "../domain/quests";
-import { getAssignmentPower, getInventoryEntries } from "../domain/selectors";
-import { sellInventoryItem } from "../domain/store";
-import type { GameState, IdleSettlementResult } from "../domain/types";
+import {
+  getAdventurerById,
+  getInventoryEntries,
+  getPartyMembers,
+  getShowcaseEntries,
+} from "../domain/selectors";
+import {
+  getCounterPower,
+  returnShowcaseItem,
+  runShopShift,
+  stockShowcaseItem,
+} from "../domain/shop";
+import { deriveAdventurerStats } from "../domain/stats";
+import type { EquipmentSlot, GameState } from "../domain/types";
 import { clearGameState, loadGameState, saveGameState } from "../infra/storage";
 
 interface BattleReport {
@@ -29,297 +47,125 @@ interface BattleReport {
   log: string[];
 }
 
-interface HydratedSession {
-  state: GameState;
-  idleReport: IdleSettlementResult | null;
-}
-
-function getFarmingPowerByMap(state: GameState): Record<string, number> {
-  const uniqueMapIds = new Set(
-    state.monsters
-      .filter((monster) => monster.currentAssignment.type === "idle")
-      .map((monster) => monster.currentMapId),
-  );
-
-  return [...uniqueMapIds].reduce<Record<string, number>>((result, mapId) => {
-    result[mapId] = getAssignmentPower(state, "idle", mapId);
-    return result;
-  }, {});
-}
-
 function pushActivity(state: GameState, message: string): GameState {
   return {
     ...state,
-    recentActivities: [message, ...state.recentActivities].slice(0, 8),
+    recentActivities: [message, ...state.recentActivities].slice(0, 10),
   };
 }
 
-function hydrateSession(): HydratedSession {
-  const stored = loadGameState();
-  const baseState = stored ?? createInitialGameState();
-  const idleReport = settleIdleProgress(
-    baseState,
-    new Date().toISOString(),
-    gameContent.mapsById,
-    getFarmingPowerByMap(baseState),
-  );
-
-  if (idleReport.settledTicks <= 0) {
-    return {
-      state: baseState,
-      idleReport: null,
-    };
-  }
-
-  return {
-    state: pushActivity(
-      idleReport.state,
-      `放置结算完成，累计回收 ${idleReport.itemsCollected.length} 类素材。`,
-    ),
-    idleReport,
-  };
-}
-
-function createInstanceId(templateId: string): string {
-  return `${templateId}-${Date.now()}-${Math.floor(Math.random() * 10000)}`;
+function hydrateState(): GameState {
+  return loadGameState() ?? createInitialGameState();
 }
 
 export function useGameSession() {
-  const hydratedRef = useRef<HydratedSession | null>(null);
-
-  if (!hydratedRef.current) {
-    hydratedRef.current = hydrateSession();
-  }
-
-  const [state, setState] = useState<GameState>(hydratedRef.current.state);
+  const [state, setState] = useState<GameState>(() => hydrateState());
   const [battleReport, setBattleReport] = useState<BattleReport | null>(null);
-  const [idleReport, setIdleReport] = useState<IdleSettlementResult | null>(
-    hydratedRef.current.idleReport,
-  );
 
   useEffect(() => {
     saveGameState(state);
   }, [state]);
 
   const currentMap = gameContent.mapsById[state.currentMapId];
-  const unlockedMaps = gameContent.mapDefinitions.filter((map) =>
-    state.unlockedMapIds.includes(map.id),
-  );
-  const craftingPower = getAssignmentPower(state, "crafting");
-  const storePower = getAssignmentPower(state, "store");
-  const lineupValidation = validateActiveLineup(state, currentMap);
+  const smithingPower = getSmithingPower(state);
+  const counterPower = getCounterPower(state);
+  const inventoryEntries = getInventoryEntries(state);
+  const showcaseEntries = getShowcaseEntries(state);
+  const partyMembers = getPartyMembers(state);
+  const partyIssues = useMemo(() => {
+    const issues: string[] = [];
 
-  function updateMonsterAssignment(
+    if (state.partyOrder.length === 0) {
+      issues.push("至少需要 1 名冒险者编入远征队。");
+    }
+
+    if (state.partyOrder.length > currentMap.maxPartySize) {
+      issues.push(`当前区域最多允许 ${currentMap.maxPartySize} 人远征。`);
+    }
+
+    return issues;
+  }, [currentMap.maxPartySize, state.partyOrder.length]);
+
+  function assignAdventurer(
     instanceId: string,
-    assignmentType: "combat" | "idle" | "store" | "crafting",
+    assignment: GameState["adventurers"][number]["assignment"],
   ) {
     setState((currentState) => {
-      const nextState = {
-        ...currentState,
-        monsters: currentState.monsters.map((monster) => {
-          if (monster.instanceId !== instanceId) {
-            return monster;
-          }
+      const alreadyInParty = currentState.partyOrder.includes(instanceId);
 
-          const template = gameContent.monsterTemplatesById[monster.templateId];
+      if (
+        assignment === "party" &&
+        !alreadyInParty &&
+        currentState.partyOrder.length >=
+          gameContent.mapsById[currentState.currentMapId].maxPartySize
+      ) {
+        return currentState;
+      }
 
-          if (assignmentType === "combat" || assignmentType === "idle") {
-            if (!template.allowedMapIds.includes(currentState.currentMapId)) {
-              return monster;
-            }
+      const nextPartyOrder =
+        assignment === "party"
+          ? alreadyInParty
+            ? currentState.partyOrder
+            : [...currentState.partyOrder, instanceId]
+          : currentState.partyOrder.filter((id) => id !== instanceId);
 
-            return {
-              ...monster,
-              currentAssignment: {
-                type: assignmentType,
-                mapId: currentState.currentMapId,
-              },
-              currentMapId: currentState.currentMapId,
-            };
-          }
-
-          return {
-            ...monster,
-            currentAssignment: {
-              type: assignmentType,
-            },
-          };
-        }),
-        activeLineup:
-          assignmentType === "combat"
-            ? currentState.activeLineup
-            : currentState.activeLineup.filter((lineupId) => lineupId !== instanceId),
-      };
-
-      return pushActivity(nextState, "怪物岗位已调整，资源分工同步更新。");
+      return pushActivity(
+        {
+          ...currentState,
+          adventurers: currentState.adventurers.map((adventurer) =>
+            adventurer.instanceId === instanceId
+              ? { ...adventurer, assignment }
+              : adventurer,
+          ),
+          partyOrder: nextPartyOrder,
+        },
+        "冒险者岗位已经重新分配，店内和远征队会按新分工运转。",
+      );
     });
   }
 
-  function toggleLineup(instanceId: string) {
+  function equipItem(adventurerId: string, slot: EquipmentSlot, nextItemId: string) {
     setState((currentState) => {
-      const map = gameContent.mapsById[currentState.currentMapId];
-      const exists = currentState.activeLineup.includes(instanceId);
+      const adventurer = getAdventurerById(currentState, adventurerId);
 
-      if (exists) {
-        return {
-          ...currentState,
-          activeLineup: currentState.activeLineup.filter((id) => id !== instanceId),
-        };
-      }
-
-      const monster = currentState.monsters.find(
-        (candidate) => candidate.instanceId === instanceId,
-      );
-
-      if (!monster) {
+      if (!adventurer) {
         return currentState;
       }
 
-      if (
-        monster.currentAssignment.type !== "combat" ||
-        monster.currentMapId !== currentState.currentMapId
-      ) {
-        return currentState;
+      const currentItemId = adventurer.equipment[slot];
+      let nextInventory = { ...currentState.inventory };
+
+      if (currentItemId) {
+        nextInventory = addInventoryEntries(nextInventory, [
+          { itemId: currentItemId, quantity: 1 },
+        ]);
       }
 
-      const hasDuplicateTemplate = currentState.activeLineup
-        .map((lineupId) =>
-          currentState.monsters.find((candidate) => candidate.instanceId === lineupId),
-        )
-        .some((lineupMonster) => lineupMonster?.templateId === monster.templateId);
+      if (nextItemId) {
+        if ((nextInventory[nextItemId] ?? 0) <= 0) {
+          return currentState;
+        }
 
-      if (
-        hasDuplicateTemplate ||
-        currentState.activeLineup.length >= map.deploymentLimit
-      ) {
-        return currentState;
+        nextInventory = removeInventoryEntries(nextInventory, [
+          { itemId: nextItemId, quantity: 1 },
+        ]);
       }
 
       return {
         ...currentState,
-        activeLineup: [...currentState.activeLineup, instanceId],
+        inventory: nextInventory,
+        adventurers: currentState.adventurers.map((candidate) =>
+          candidate.instanceId === adventurerId
+            ? {
+                ...candidate,
+                equipment: {
+                  ...candidate.equipment,
+                  [slot]: nextItemId || undefined,
+                },
+              }
+            : candidate,
+        ),
       };
-    });
-  }
-
-  function travelToMap(mapId: string) {
-    if (!state.unlockedMapIds.includes(mapId)) {
-      return;
-    }
-
-    setState((currentState) => ({
-      ...currentState,
-      currentMapId: mapId,
-    }));
-    setBattleReport(null);
-  }
-
-  function settleIdleNow() {
-    const report = settleIdleProgress(
-      state,
-      new Date().toISOString(),
-      gameContent.mapsById,
-      getFarmingPowerByMap(state),
-    );
-
-    if (report.settledTicks <= 0) {
-      setIdleReport({
-        state,
-        settledTicks: 0,
-        elapsedHours: 0,
-        itemsCollected: [],
-      });
-      return;
-    }
-
-    setState(
-      pushActivity(
-        report.state,
-        `放置收益到账：${report.itemsCollected.length} 类素材进入仓库。`,
-      ),
-    );
-    setIdleReport(report);
-  }
-
-  function runEncounter() {
-    const validation = validateActiveLineup(state, currentMap);
-
-    if (!validation.valid) {
-      setBattleReport({
-        title: "编队无效",
-        subtitle: "先把当前地图的出战怪物调整好。",
-        log: validation.issues,
-      });
-      return;
-    }
-
-    const encounter = buildEncounterParty(
-      currentMap,
-      Array.from({ length: 8 }, () => Math.random()),
-    );
-    const resolution = resolveBattle(
-      createPlayerBattleParty(state, currentMap.id),
-      encounter,
-    );
-
-    let nextState = state;
-    let subtitle = `遭遇 ${encounter.map((enemy) => enemy.name).join("、")}`;
-
-    if (resolution.winner === "player") {
-      nextState = {
-        ...nextState,
-        inventory: addInventoryEntries(nextState.inventory, resolution.rewards.items),
-        gold: nextState.gold + resolution.rewards.gold,
-        mapProgress: {
-          ...nextState.mapProgress,
-          [currentMap.id]: {
-            wins: (nextState.mapProgress[currentMap.id]?.wins ?? 0) + 1,
-          },
-        },
-      };
-
-      const captureCandidate = resolution.captureCandidates.find(
-        (candidate) => Math.random() <= candidate.captureChance,
-      );
-
-      if (captureCandidate) {
-        const isShiny = Math.random() <= 0.08;
-        nextState = {
-          ...nextState,
-          monsters: [
-            ...nextState.monsters,
-            buildMonsterInstance({
-              instanceId: createInstanceId(captureCandidate.templateId),
-              templateId: captureCandidate.templateId,
-              level: captureCandidate.level,
-              isShiny,
-              assignment: {
-                type: "idle",
-                mapId: currentMap.id,
-              },
-              currentMapId: currentMap.id,
-            }),
-          ],
-        };
-        subtitle += "，并额外成功收编了一只怪物。";
-      }
-
-      nextState = pushActivity(
-        nextState,
-        `探索 ${currentMap.name} 获胜，入账 ${resolution.rewards.gold} 金币。`,
-      );
-    } else {
-      nextState = pushActivity(
-        nextState,
-        `探索 ${currentMap.name} 失利，事务所需要重新调整。`,
-      );
-    }
-
-    setState(nextState);
-    setBattleReport({
-      title: resolution.winner === "player" ? "战斗胜利" : "战斗失利",
-      subtitle,
-      log: resolution.log,
     });
   }
 
@@ -330,37 +176,170 @@ export function useGameSession() {
       return;
     }
 
-    const result = craftRecipe(state, recipe, craftingPower);
-
-    setState(
+    setState((currentState) =>
       pushActivity(
-        result.state,
-        `${recipe.name} 完成，产出 ${result.producedQuantity} 件 ${gameContent.itemDefinitionsById[recipe.output.itemId].name}。`,
+        craftRecipe(currentState, recipe),
+        `工坊完成了 ${recipe.name}，可用于装备、陈列或订单交付。`,
       ),
     );
   }
 
-  function sell(itemId: string, quantity: number) {
-    const item = gameContent.itemDefinitionsById[itemId];
-
-    if (!item || (state.inventory[itemId] ?? 0) < quantity) {
+  function stockItem(itemId: string) {
+    if ((state.inventory[itemId] ?? 0) <= 0) {
       return;
     }
 
-    const result = sellInventoryItem(
-      state,
-      itemId,
-      quantity,
-      item.baseValue,
-      storePower,
+    setState((currentState) =>
+      pushActivity(
+        stockShowcaseItem(currentState, itemId),
+        `${gameContent.itemDefinitionsById[itemId].name} 已经摆上展柜。`,
+      ),
     );
+  }
+
+  function unstockItem(itemId: string) {
+    if ((state.showcaseInventory[itemId] ?? 0) <= 0) {
+      return;
+    }
+
+    setState((currentState) =>
+      pushActivity(
+        returnShowcaseItem(currentState, itemId),
+        `${gameContent.itemDefinitionsById[itemId].name} 已经从展柜撤回仓库。`,
+      ),
+    );
+  }
+
+  function runShopDay() {
+    const result = runShopShift(state);
+    const soldLabel =
+      result.soldItems.length > 0
+        ? result.soldItems
+            .map(
+              (entry) =>
+                `${gameContent.itemDefinitionsById[entry.itemId].name} x${entry.quantity}`,
+            )
+            .join(" / ")
+        : "没有商品成交";
 
     setState(
       pushActivity(
         result.state,
-        `出售 ${item.name} x${quantity}，获得 ${result.goldEarned} 金币。`,
+        `营业班次结束：${soldLabel}，共入账 ${result.goldEarned} 金币。`,
       ),
     );
+  }
+
+  function travelToMap(mapId: string) {
+    if (!state.unlockedMapIds.includes(mapId)) {
+      return;
+    }
+
+    setBattleReport(null);
+    setState((currentState) => ({
+      ...currentState,
+      currentMapId: mapId,
+      exploration: createExplorationState(mapId),
+      battle: null,
+    }));
+  }
+
+  function moveExplorer(deltaX: number, deltaY: number) {
+    setState((currentState) => {
+      if (currentState.battle) {
+        return currentState;
+      }
+
+      const map = gameContent.mapsById[currentState.currentMapId];
+      const nextX = currentState.exploration.position.x + deltaX;
+      const nextY = currentState.exploration.position.y + deltaY;
+
+      if (!canMoveToTile(map, nextX, nextY)) {
+        return currentState;
+      }
+
+      const tileKey = `${nextX},${nextY}`;
+      let nextState: GameState = {
+        ...currentState,
+        exploration: {
+          ...currentState.exploration,
+          position: { x: nextX, y: nextY },
+          visitedTileKeys: currentState.exploration.visitedTileKeys.includes(tileKey)
+            ? currentState.exploration.visitedTileKeys
+            : [...currentState.exploration.visitedTileKeys, tileKey],
+        },
+      };
+
+      if (!currentState.exploration.visitedTileKeys.includes(tileKey)) {
+        const eventResult = applyTileEventRewards(nextState, tileKey);
+        nextState = eventResult.state;
+
+        if (eventResult.message) {
+          nextState = pushActivity(nextState, eventResult.message);
+        }
+
+        if (eventResult.battleEncounterId) {
+          nextState = {
+            ...nextState,
+            battle: createBattleState(nextState, eventResult.battleEncounterId),
+          };
+        }
+      }
+
+      return nextState;
+    });
+  }
+
+  function attackTarget(targetEnemyId: string) {
+    if (!state.battle) {
+      return;
+    }
+
+    const resolvedBattle = performPlayerAttack(state.battle, targetEnemyId);
+
+    if (resolvedBattle.phase === "victory") {
+      const rewards = getBattleRewards(resolvedBattle);
+      const nextState = pushActivity(
+        {
+          ...state,
+          battle: null,
+          inventory: addInventoryEntries(state.inventory, rewards.items),
+          gold: state.gold + rewards.gold,
+        },
+        `远征胜利，带回 ${rewards.gold} 金币和 ${rewards.items.length} 类素材。`,
+      );
+
+      setState(nextState);
+      setBattleReport({
+        title: "战斗胜利",
+        subtitle: "敌方被清空，远征收获已回流到店铺。",
+        log: resolvedBattle.log,
+      });
+      return;
+    }
+
+    if (resolvedBattle.phase === "defeat") {
+      setState(
+        pushActivity(
+          {
+            ...state,
+            battle: null,
+          },
+          "远征失败，本次没有带回额外战利品。",
+        ),
+      );
+      setBattleReport({
+        title: "战斗失利",
+        subtitle: "队伍撤退回店，需要重新整备装备与分工。",
+        log: resolvedBattle.log,
+      });
+      return;
+    }
+
+    setState({
+      ...state,
+      battle: resolvedBattle,
+    });
   }
 
   function claimQuest(questId: string) {
@@ -370,53 +349,54 @@ export function useGameSession() {
       return;
     }
 
-    const nextState = completeQuest(state, quest, new Date().toISOString());
-
-    setState(
+    setState((currentState) =>
       pushActivity(
-        nextState,
-        `完成任务《${quest.name}》，获得 ${quest.rewards.gold} 金币。`,
+        completeQuest(currentState, quest, new Date().toISOString()),
+        `完成任务《${quest.name}》，解锁了新的经营推进空间。`,
       ),
     );
   }
 
   function resetProgress() {
     clearGameState();
-    const freshState = createInitialGameState();
     setBattleReport(null);
-    setIdleReport(null);
-    setState(freshState);
+    setState(createInitialGameState());
   }
 
   return {
     state,
     currentMap,
-    unlockedMaps,
-    craftingPower,
-    storePower,
-    lineupValidation,
+    smithingPower,
+    counterPower,
+    inventoryEntries,
+    showcaseEntries,
+    partyMembers,
+    partyIssues,
     battleReport,
-    idleReport,
-    inventoryEntries: getInventoryEntries(state),
-    roster: state.monsters.map((monster) => ({
-      monster,
-      template: gameContent.monsterTemplatesById[monster.templateId],
+    roster: state.adventurers.map((adventurer) => ({
+      adventurer,
+      definition: gameContent.adventurersById[adventurer.definitionId],
+      stats: deriveAdventurerStats(adventurer),
     })),
+    recipes: gameContent.recipeDefinitions.filter((recipe) =>
+      state.unlockedRecipeIds.includes(recipe.id),
+    ),
     quests: gameContent.questDefinitions.map((quest) => ({
       quest,
       claimed: isQuestClaimed(state, quest.id),
       completable: canCompleteQuest(state, quest),
     })),
     travelToMap,
-    updateMonsterAssignment,
-    toggleLineup,
-    settleIdleNow,
-    runEncounter,
+    moveExplorer,
+    attackTarget,
+    assignAdventurer,
+    equipItem,
     craft,
-    sell,
+    stockItem,
+    unstockItem,
+    runShopDay,
     claimQuest,
     resetProgress,
     dismissBattleReport: () => setBattleReport(null),
-    dismissIdleReport: () => setIdleReport(null),
   };
 }

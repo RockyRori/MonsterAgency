@@ -1,90 +1,104 @@
-import type { GameState, MonsterAssignment, MonsterInstance } from "./types";
+import { createExplorationState } from "./exploration";
+import type { AdventurerAssignment, AdventurerState, GameState } from "./types";
 
-interface BuildMonsterInstanceInput {
+interface BuildAdventurerStateInput {
   instanceId: string;
-  templateId: string;
+  definitionId: string;
   level: number;
-  starRank?: number;
-  isShiny?: boolean;
-  assignment: MonsterAssignment;
-  currentMapId: string;
+  assignment: AdventurerAssignment;
 }
 
-export function buildMonsterInstance(
-  input: BuildMonsterInstanceInput,
-): MonsterInstance {
+export function buildAdventurerState(
+  input: BuildAdventurerStateInput,
+): AdventurerState {
   return {
     instanceId: input.instanceId,
-    templateId: input.templateId,
-    isShiny: input.isShiny ?? false,
+    definitionId: input.definitionId,
     level: input.level,
     exp: 0,
-    starRank: input.starRank ?? 0,
-    shinyStarRank: 0,
-    skills: [],
-    equips: [],
-    traits: [],
-    currentAssignment: input.assignment,
-    currentMapId: input.currentMapId,
-    lockState: "available",
+    assignment: input.assignment,
+    equipment: {},
   };
 }
 
-export function createInitialGameState(
-  nowIso: string = new Date().toISOString(),
-): GameState {
+export function createInitialGameState(): GameState {
   return {
-    version: 1,
-    currentMapId: "verdant-border",
-    unlockedMapIds: ["verdant-border"],
+    version: 2,
+    gold: 120,
     inventory: {
-      "soft-herb": 6,
-      "ember-dust": 4,
-      "iron-scrap": 2,
+      "copper-ore": 8,
+      "beast-hide": 5,
+      "wind-thread": 4,
+      "crystal-shard": 1,
+      "bronze-sword": 1,
+      "padded-vest": 1,
     },
-    gold: 70,
-    monsters: [
-      buildMonsterInstance({
-        instanceId: "monster-ember-1",
-        templateId: "ember-imp",
-        level: 2,
-        assignment: { type: "combat", mapId: "verdant-border" },
-        currentMapId: "verdant-border",
-      }),
-      buildMonsterInstance({
-        instanceId: "monster-boar-1",
-        templateId: "moss-boar",
-        level: 2,
-        assignment: { type: "combat", mapId: "verdant-border" },
-        currentMapId: "verdant-border",
-      }),
-      buildMonsterInstance({
-        instanceId: "monster-sprite-1",
-        templateId: "lantern-sprite",
-        level: 1,
-        assignment: { type: "crafting" },
-        currentMapId: "verdant-border",
-      }),
-      buildMonsterInstance({
-        instanceId: "monster-ember-2",
-        templateId: "ember-imp",
-        level: 1,
-        assignment: { type: "idle", mapId: "verdant-border" },
-        currentMapId: "verdant-border",
-      }),
+    showcaseInventory: {},
+    adventurers: [
+      {
+        ...buildAdventurerState({
+          instanceId: "adv-lyra",
+          definitionId: "lyra",
+          level: 2,
+          assignment: "party",
+        }),
+        equipment: {
+          weapon: "bronze-sword",
+          armor: "padded-vest",
+        },
+      },
+      {
+        ...buildAdventurerState({
+          instanceId: "adv-mira",
+          definitionId: "mira",
+          level: 2,
+          assignment: "counter",
+        }),
+        equipment: {
+          weapon: "oak-wand",
+          armor: "linen-coat",
+        },
+      },
+      {
+        ...buildAdventurerState({
+          instanceId: "adv-torr",
+          definitionId: "torr",
+          level: 2,
+          assignment: "party",
+        }),
+        equipment: {
+          weapon: "hunter-knife",
+          armor: "scout-cloak",
+        },
+      },
+      {
+        ...buildAdventurerState({
+          instanceId: "adv-selene",
+          definitionId: "selene",
+          level: 1,
+          assignment: "smithy",
+        }),
+        equipment: {
+          weapon: "apprentice-orb",
+          armor: "linen-coat",
+        },
+      },
     ],
-    activeLineup: ["monster-ember-1", "monster-boar-1"],
-    mapProgress: {
-      "verdant-border": { wins: 0 },
-      "glass-cavern": { wins: 0 },
+    partyOrder: ["adv-lyra", "adv-torr"],
+    unlockedMapIds: ["copper-trail"],
+    unlockedRecipeIds: ["bronze-sword", "padded-vest", "hunter-knife"],
+    currentMapId: "copper-trail",
+    exploration: createExplorationState("copper-trail"),
+    battle: null,
+    lifetime: {
+      craftedCounts: {},
+      soldGold: 0,
+      clearedMapIds: [],
     },
     questStates: {},
-    time: {
-      lastIdleSettlementAt: nowIso,
-    },
     recentActivities: [
-      "事务所重新开张，先从青缘边境建立资源循环。",
-      "已有一只余烬小鬼正在边境执行放置任务。",
+      "店铺重新开张，先把第一批基础装备和展示货跑起来。",
+      "锻造、上架、探索三条线已经同时启动。",
     ],
   };
 }

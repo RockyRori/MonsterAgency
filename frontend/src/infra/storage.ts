@@ -14,7 +14,13 @@ export function loadGameState(): GameState | null {
       return null;
     }
 
-    return JSON.parse(raw) as GameState;
+    const parsed = JSON.parse(raw) as GameState;
+
+    if (parsed.version !== 2) {
+      return null;
+    }
+
+    return parsed;
   } catch {
     return null;
   }
